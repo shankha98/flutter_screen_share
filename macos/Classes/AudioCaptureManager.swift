@@ -68,7 +68,8 @@ class AudioCaptureManager: NSObject, SCStreamOutput {
                 let config = SCStreamConfiguration()
                 config.capturesAudio = true
                 config.excludesCurrentProcessAudio = true
-                
+                config.captureMicrophone = true
+
                 // Create filter for system audio (no video content)
                 let filter = SCContentFilter(display: content.displays.first!, excludingWindows: [])
                 
