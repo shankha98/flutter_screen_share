@@ -18,6 +18,28 @@ class _ScreenCaptureState extends State<ScreenCapture> {
   ScreenShareController screenSharer = ScreenShareController();
   String? _audioFilePath;
   bool _isRecordingAudio = false;
+  List<AudioDevice> _audioDevices = [];
+  AudioDevice? _selectedAudioDevice;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAudioDevices();
+  }
+
+  Future<void> _loadAudioDevices() async {
+    try {
+      final devices = await FlutterScreenShare.getAudioDevices();
+      setState(() {
+        _audioDevices = devices;
+        if (devices.isNotEmpty) {
+          _selectedAudioDevice = devices.first; // Default to first device
+        }
+      });
+    } catch (e) {
+      debugPrint('Failed to load audio devices: $e');
+    }
+  }
 
   void startCapture() async {
     await screenSharer.startCaptureWithDialog(
@@ -41,13 +63,17 @@ class _ScreenCaptureState extends State<ScreenCapture> {
         _isRecordingAudio = true;
       });
 
-      final filePath = await FlutterScreenShare.startAudioCapture();
+      final filePath = await FlutterScreenShare.startAudioCaptureWithDevice(
+        _selectedAudioDevice,
+      );
 
       setState(() {
         _audioFilePath = filePath;
       });
 
-      debugPrint('Audio capture started. Recording to: $filePath');
+      debugPrint(
+        'Audio capture started with device: ${_selectedAudioDevice?.name}. Recording to: $filePath',
+      );
     } catch (e) {
       setState(() {
         _isRecordingAudio = false;
@@ -114,6 +140,42 @@ class _ScreenCaptureState extends State<ScreenCapture> {
                       ),
                     ),
                     const SizedBox(height: 10),
+                    // Audio device selection
+                    if (_audioDevices.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          const Text('Select Microphone:'),
+                          const Spacer(),
+                          IconButton(
+                            onPressed:
+                                _isRecordingAudio ? null : _loadAudioDevices,
+                            icon: const Icon(Icons.refresh),
+                            tooltip: 'Refresh Audio Devices',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      DropdownButton<AudioDevice>(
+                        value: _selectedAudioDevice,
+                        isExpanded: true,
+                        items:
+                            _audioDevices.map((device) {
+                              return DropdownMenuItem<AudioDevice>(
+                                value: device,
+                                child: Text(device.name),
+                              );
+                            }).toList(),
+                        onChanged:
+                            _isRecordingAudio
+                                ? null
+                                : (AudioDevice? device) {
+                                  setState(() {
+                                    _selectedAudioDevice = device;
+                                  });
+                                },
+                      ),
+                      const SizedBox(height: 10),
+                    ],
                     if (_audioFilePath != null)
                       Text(
                         'Recording to: ${_audioFilePath!.split('/').last}',

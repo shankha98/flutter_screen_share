@@ -56,12 +56,27 @@ class MethodChannelFlutterScreenShare extends FlutterScreenSharePlatform {
   }
 
   @override
-  Future<String?> startAudioCapture() async {
-    return await _channel.invokeMethod<String>('startAudioCapture');
+  Future<String?> startAudioCapture([String? microphoneDeviceID]) async {
+    final Map<String, dynamic> arguments = {};
+    if (microphoneDeviceID != null) {
+      arguments['microphoneDeviceID'] = microphoneDeviceID;
+    }
+    return await _channel.invokeMethod<String>(
+      'startAudioCapture',
+      arguments.isNotEmpty ? arguments : null,
+    );
   }
 
   @override
   Future<void> stopAudioCapture() async {
     await _channel.invokeMethod('stopAudioCapture');
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getAudioDevices() async {
+    final List<dynamic> devices = await _channel.invokeMethod(
+      'getAudioDevices',
+    );
+    return devices.cast<Map<String, dynamic>>();
   }
 }

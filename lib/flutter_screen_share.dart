@@ -3,11 +3,13 @@ import 'dart:typed_data';
 import 'flutter_screen_share_platform_interface.dart';
 import 'src/display.dart';
 import 'src/encoding.dart';
+import 'src/audio_device.dart';
 
 export 'src/display.dart';
 export 'src/encoding.dart';
 export 'src/screen_share_controller.dart';
 export 'src/screen_share_view.dart';
+export 'src/audio_device.dart';
 
 class FlutterScreenShare {
   /// Starts the screen capture process.
@@ -76,11 +78,35 @@ class FlutterScreenShare {
     return filtered;
   }
 
+  /// Retrieves a list of available audio input devices (microphones).
+  ///
+  /// Returns a list of [AudioDevice] objects representing all available microphones.
+  static Future<List<AudioDevice>> getAudioDevices() async {
+    final devices = await FlutterScreenSharePlatform.instance.getAudioDevices();
+    return devices.map((device) => AudioDevice.fromMap(device)).toList();
+  }
+
   /// Starts audio capture from microphone and system audio.
   ///
+  /// [microphoneDeviceID] is optional - specify a device ID from [getAudioDevices]
+  /// to use a specific microphone. If null, uses the default microphone.
+  ///
   /// Returns the file path where the audio is being recorded.
-  static Future<String?> startAudioCapture() {
-    return FlutterScreenSharePlatform.instance.startAudioCapture();
+  static Future<String?> startAudioCapture([String? microphoneDeviceID]) {
+    return FlutterScreenSharePlatform.instance.startAudioCapture(
+      microphoneDeviceID,
+    );
+  }
+
+  /// Convenience method to start audio capture with an [AudioDevice].
+  ///
+  /// [audioDevice] is the microphone device to use. If null, uses the default microphone.
+  ///
+  /// Returns the file path where the audio is being recorded.
+  static Future<String?> startAudioCaptureWithDevice([
+    AudioDevice? audioDevice,
+  ]) {
+    return startAudioCapture(audioDevice?.id);
   }
 
   /// Stops the audio capture process.
