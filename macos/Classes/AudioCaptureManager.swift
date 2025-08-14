@@ -11,7 +11,11 @@ class AudioCaptureManager: NSObject, SCStreamOutput {
     
     private let audioQueue = DispatchQueue(label: "audio.queue")
     
-    func startAudioCapture(completion: @escaping (Result<String, Error>) -> Void) {
+    /// Starts audio capture including system audio and optionally microphone audio
+    /// - Parameters:
+    ///   - microphoneDeviceID: Optional microphone device ID. Use getAudioDevices() to get available devices. If nil, uses default microphone.
+    ///   - completion: Completion handler with the output file path or error
+    func startAudioCapture(microphoneDeviceID: String? = nil, completion: @escaping (Result<String, Error>) -> Void) {
         // Setup output file path
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         outputURL = documentsPath.appendingPathComponent("audio_capture_\(Date().timeIntervalSince1970).m4a")
@@ -69,6 +73,15 @@ class AudioCaptureManager: NSObject, SCStreamOutput {
                 config.capturesAudio = true
                 config.excludesCurrentProcessAudio = true
                 config.captureMicrophone = true
+                
+                // Configure audio settings
+                config.sampleRate = 44100  // Match our audio settings
+                config.channelCount = 2    // Match our audio settings (stereo)
+                
+                // Set microphone device if specified
+                if let microphoneDeviceID = microphoneDeviceID {
+                    config.microphoneCaptureDeviceID = microphoneDeviceID
+                }
 
                 // Create filter for system audio (no video content)
                 let filter = SCContentFilter(display: content.displays.first!, excludingWindows: [])

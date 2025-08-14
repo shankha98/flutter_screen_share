@@ -169,9 +169,8 @@ class ScreenCaptureManager: NSObject, SCStreamDelegate, SCStreamOutput {
         CVPixelBufferUnlockBaseAddress(imageBuffer, .readOnly)
         
         DispatchQueue.main.async { [weak self] in
-            guard let self = self,
-                  let textureId = plugin.textureId else { return }
-            plugin.textureRegistry?.textureFrameAvailable(textureId)
+            guard let textureId = self?.plugin?.textureId else { return }
+            self?.plugin?.textureRegistry?.textureFrameAvailable(textureId)
         }
         
         frameCount += 1

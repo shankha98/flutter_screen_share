@@ -4,6 +4,7 @@ import CoreImage
 import Metal
 import SDWebImage
 import SDWebImageWebPCoder
+import AudioToolbox
 
 @available(macOS 15.0, *)
 public class FlutterScreenSharePlugin: NSObject, FlutterPlugin, SCStreamDelegate {
@@ -38,9 +39,13 @@ public class FlutterScreenSharePlugin: NSObject, FlutterPlugin, SCStreamDelegate
         case "getSources":
             getSources(result)
         case "startAudioCapture":
-            startAudioCapture(result)
+            let args = call.arguments as? [String: Any]
+            let microphoneDeviceID = args?["microphoneDeviceID"] as? String
+            startAudioCapture(microphoneDeviceID: microphoneDeviceID, result)
         case "stopAudioCapture":
             stopAudioCapture(result)
+        case "getAudioDevices":
+            getAudioDevices(result)
         default:
             result(FlutterMethodNotImplemented)
         }
@@ -65,9 +70,9 @@ public class FlutterScreenSharePlugin: NSObject, FlutterPlugin, SCStreamDelegate
         captureManager = nil
     }
     
-    private func startAudioCapture(_ result: @escaping FlutterResult) {
+    private func startAudioCapture(microphoneDeviceID: String? = nil, _ result: @escaping FlutterResult) {
         audioCaptureManager = AudioCaptureManager()
-        audioCaptureManager?.startAudioCapture { captureResult in
+        audioCaptureManager?.startAudioCapture(microphoneDeviceID: microphoneDeviceID) { captureResult in
             DispatchQueue.main.async {
                 switch captureResult {
                 case .success(let filePath):
@@ -91,6 +96,124 @@ public class FlutterScreenSharePlugin: NSObject, FlutterPlugin, SCStreamDelegate
             }
         }
         audioCaptureManager = nil
+    }
+    
+    private func getAudioDevices(_ result: @escaping FlutterResult) {
+        var inputDevices: [[String: Any]] = []
+        
+        var propertyAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        
+        var dataSize: UInt32 = 0
+        let status = AudioObjectGetPropertyDataSize(
+            AudioObjectID(kAudioObjectSystemObject),
+            &propertyAddress,
+            0,
+            nil,
+            &dataSize
+        )
+        
+        guard status == noErr else {
+            result(FlutterError(code: "AUDIO_DEVICES_ERROR", message: "Failed to get audio devices", details: nil))
+            return
+        }
+        
+        let deviceCount = Int(dataSize) / MemoryLayout<AudioDeviceID>.size
+        let devices = UnsafeMutablePointer<AudioDeviceID>.allocate(capacity: deviceCount)
+        defer { devices.deallocate() }
+        
+        let getDevicesStatus = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &propertyAddress,
+            0,
+            nil,
+            &dataSize,
+            devices
+        )
+        
+        guard getDevicesStatus == noErr else {
+            result(FlutterError(code: "AUDIO_DEVICES_ERROR", message: "Failed to get audio devices", details: nil))
+            return
+        }
+        
+        for i in 0..<deviceCount {
+            let deviceID = devices[i]
+            
+            // Check if device has input streams (microphone)
+            var inputStreamsAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyStreamConfiguration,
+                mScope: kAudioDevicePropertyScopeInput,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            
+            var inputStreamDataSize: UInt32 = 0
+            let inputStreamStatus = AudioObjectGetPropertyDataSize(
+                deviceID,
+                &inputStreamsAddress,
+                0,
+                nil,
+                &inputStreamDataSize
+            )
+            
+            guard inputStreamStatus == noErr && inputStreamDataSize > 0 else {
+                continue // Skip devices without input streams
+            }
+            
+            // Get device name
+            var nameAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyDeviceNameCFString,
+                mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            
+            var nameSize: UInt32 = UInt32(MemoryLayout<CFString>.size)
+            var deviceName: CFString?
+            
+            let nameStatus = AudioObjectGetPropertyData(
+                deviceID,
+                &nameAddress,
+                0,
+                nil,
+                &nameSize,
+                &deviceName
+            )
+            
+            let name = (nameStatus == noErr && deviceName != nil) ? 
+                String(describing: deviceName!) : "Unknown Device"
+            
+            // Get device UID (unique identifier)
+            var uidAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyDeviceUID,
+                mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            
+            var uidSize: UInt32 = UInt32(MemoryLayout<CFString>.size)
+            var deviceUID: CFString?
+            
+            let uidStatus = AudioObjectGetPropertyData(
+                deviceID,
+                &uidAddress,
+                0,
+                nil,
+                &uidSize,
+                &deviceUID
+            )
+            
+            let uid = (uidStatus == noErr && deviceUID != nil) ? 
+                String(describing: deviceUID!) : String(deviceID)
+            
+            inputDevices.append([
+                "id": uid,
+                "name": name,
+                "deviceID": deviceID
+            ])
+        }
+        
+        result(inputDevices)
     }
     func setupTexture(descriptor: MTLTextureDescriptor) -> Int64? {
         self.metalTexture = metalDevice?.makeTexture(descriptor: descriptor)
