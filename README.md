@@ -11,6 +11,7 @@ A Flutter plugin for macOS that enables screen sharing using Apple's ScreenCaptu
 - Supports **Flutter texture rendering**
 - Provides **streaming frame data**
 - Allows display and window selection for capture
+- **NEW**: Audio capture from microphone and system audio
 
 ## Installation
 
@@ -34,6 +35,10 @@ Add these permissions to your `macos/Runner/Info.plist` file:
 ```xml
 <key>NSScreenCaptureUsageDescription</key>
 <string>This app needs screen capture access.</string>
+<key>NSMicrophoneUsageDescription</key>
+<string>This app needs microphone access for audio recording.</string>
+<key>NSAppleEventsUsageDescription</key>
+<string>This app needs permission to capture system audio</string>
 ```
 
 ### Entitlements
@@ -41,10 +46,13 @@ Modify your `macos/Runner/debug.entitlements` and `release.entitlements`:
 
 ```xml
 <key>com.apple.security.screen-recording</key>
-	<true/>
-
+<true/>
 <key>com.apple.security.device.screen-capture</key>
-<true/> //older mac versions
+<true/> <!-- older mac versions -->
+<key>com.apple.security.device.audio-input</key>
+<true/>
+<key>com.apple.security.device.microphone</key>
+<true/>
 ```
 
 ## Usage
@@ -110,6 +118,32 @@ controller.frameStream?.listen((Uint8List frame) {
 });
 ```
 
+## Audio Capture
+
+### Start Audio Capture
+
+```dart
+try {
+  String? filePath = await FlutterScreenShare.startAudioCapture();
+  print('Recording started. File will be saved to: $filePath');
+} catch (e) {
+  print('Failed to start audio capture: $e');
+}
+```
+
+### Stop Audio Capture
+
+```dart
+try {
+  await FlutterScreenShare.stopAudioCapture();
+  print('Recording stopped and file saved');
+} catch (e) {
+  print('Failed to stop audio capture: $e');
+}
+```
+
+**Note**: Audio capture records both microphone input and system audio into an M4A file. Requires macOS 12.3+. See [AUDIO_CAPTURE.md](AUDIO_CAPTURE.md) for detailed documentation.
+
 ### 7. Encoding Options
 
 ```dart
@@ -126,6 +160,8 @@ controller.startCapture(source: source, options: encodingOptions);
 | `FlutterScreenShare.stopCapture()` | Stops screen capture |
 | `FlutterScreenShare.getDisplays()` | Returns available displays |
 | `FlutterScreenShare.getSources()` | Returns available sources (displays and windows) |
+| `FlutterScreenShare.startAudioCapture()` | Starts audio capture from microphone and system audio |
+| `FlutterScreenShare.stopAudioCapture()` | Stops audio capture |
 | `ScreenShareController.startCaptureWithDialog(context, onData)` | Starts capture with a selection dialog |
 | `ScreenShareController.startCapture(source, onData)` | Starts capture with a selected source |
 | `ScreenShareController.stopCapture()` | Stops screen capture |

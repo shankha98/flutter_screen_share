@@ -75,4 +75,16 @@ class FlutterScreenShare {
             .toList();
     return filtered;
   }
+
+  /// Starts audio capture from microphone and system audio.
+  ///
+  /// Returns the file path where the audio is being recorded.
+  static Future<String?> startAudioCapture() {
+    return FlutterScreenSharePlatform.instance.startAudioCapture();
+  }
+
+  /// Stops the audio capture process.
+  static Future<void> stopAudioCapture() {
+    return FlutterScreenSharePlatform.instance.stopAudioCapture();
+  }
 }

@@ -32,5 +32,7 @@
 	<string>Screen sharing requires microphone access.</string>
 	<key>NSScreenCaptureUsageDescription</key>
 	<string>This app needs access to screen recording to capture your screen.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>This app needs permission to capture system audio</string>
 </dict>
 </plist>

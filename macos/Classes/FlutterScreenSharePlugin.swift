@@ -13,6 +13,7 @@ public class FlutterScreenSharePlugin: NSObject, FlutterPlugin {
     private var metalDevice: MTLDevice?
     internal var ciContext: CIContext?
     private var captureManager: ScreenCaptureManager?
+    private var audioCaptureManager: AudioCaptureManager?
     
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(name: "flutter_screen_share", binaryMessenger: registrar.messenger)
@@ -35,6 +36,10 @@ public class FlutterScreenSharePlugin: NSObject, FlutterPlugin {
             getDisplays(result)
         case "getSources":
             getSources(result)
+        case "startAudioCapture":
+            startAudioCapture(result)
+        case "stopAudioCapture":
+            stopAudioCapture(result)
         default:
             result(FlutterMethodNotImplemented)
         }
@@ -57,6 +62,42 @@ public class FlutterScreenSharePlugin: NSObject, FlutterPlugin {
     private func stopCapture(_ result: @escaping FlutterResult) {
         captureManager?.stopCapture(result)
         captureManager = nil
+    }
+    
+    private func startAudioCapture(_ result: @escaping FlutterResult) {
+        if #available(macOS 12.3, *) {
+            audioCaptureManager = AudioCaptureManager()
+            audioCaptureManager?.startAudioCapture { [weak self] captureResult in
+                DispatchQueue.main.async {
+                    switch captureResult {
+                    case .success(let filePath):
+                        result(filePath)
+                    case .failure(let error):
+                        result(FlutterError(code: "AUDIO_CAPTURE_FAILED", message: error.localizedDescription, details: nil))
+                    }
+                }
+            }
+        } else {
+            result(FlutterError(code: "UNSUPPORTED_VERSION", message: "Audio capture requires macOS 12.3 or later", details: nil))
+        }
+    }
+    
+    private func stopAudioCapture(_ result: @escaping FlutterResult) {
+        if #available(macOS 12.3, *) {
+            audioCaptureManager?.stopAudioCapture { [weak self] stopResult in
+                DispatchQueue.main.async {
+                    switch stopResult {
+                    case .success():
+                        result(nil)
+                    case .failure(let error):
+                        result(FlutterError(code: "AUDIO_STOP_FAILED", message: error.localizedDescription, details: nil))
+                    }
+                    self?.audioCaptureManager = nil
+                }
+            }
+        } else {
+            result(FlutterError(code: "UNSUPPORTED_VERSION", message: "Audio capture requires macOS 12.3 or later", details: nil))
+        }
     }
     func setupTexture(descriptor: MTLTextureDescriptor) -> Int64? {
         self.metalTexture = metalDevice?.makeTexture(descriptor: descriptor)

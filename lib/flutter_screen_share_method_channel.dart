@@ -54,4 +54,14 @@ class MethodChannelFlutterScreenShare extends FlutterScreenSharePlatform {
     final sourcesList = List.from(sources);
     return sourcesList.map((source) => Display.fromMap(source)).toList();
   }
+
+  @override
+  Future<String?> startAudioCapture() async {
+    return await _channel.invokeMethod<String>('startAudioCapture');
+  }
+
+  @override
+  Future<void> stopAudioCapture() async {
+    await _channel.invokeMethod('stopAudioCapture');
+  }
 }

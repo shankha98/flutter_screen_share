@@ -47,4 +47,12 @@ abstract class FlutterScreenSharePlatform extends PlatformInterface {
   Future<List<Display>> getSources() {
     throw UnimplementedError('stopScreenCapture() has not been implemented.');
   }
+
+  Future<String?> startAudioCapture() {
+    throw UnimplementedError('startAudioCapture() has not been implemented.');
+  }
+
+  Future<void> stopAudioCapture() {
+    throw UnimplementedError('stopAudioCapture() has not been implemented.');
+  }
 }
