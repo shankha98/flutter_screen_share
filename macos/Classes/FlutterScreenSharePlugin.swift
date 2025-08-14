@@ -65,7 +65,7 @@ public class FlutterScreenSharePlugin: NSObject, FlutterPlugin {
     }
     
     private func startAudioCapture(_ result: @escaping FlutterResult) {
-        if #available(macOS 12.3, *) {
+        if #available(macOS 13.0, *) {
             audioCaptureManager = AudioCaptureManager()
             audioCaptureManager?.startAudioCapture { [weak self] captureResult in
                 DispatchQueue.main.async {
@@ -78,12 +78,12 @@ public class FlutterScreenSharePlugin: NSObject, FlutterPlugin {
                 }
             }
         } else {
-            result(FlutterError(code: "UNSUPPORTED_VERSION", message: "Audio capture requires macOS 12.3 or later", details: nil))
+            result(FlutterError(code: "UNSUPPORTED_VERSION", message: "Audio capture requires macOS 13.0 or later", details: nil))
         }
     }
     
     private func stopAudioCapture(_ result: @escaping FlutterResult) {
-        if #available(macOS 12.3, *) {
+        if #available(macOS 13.0, *) {
             audioCaptureManager?.stopAudioCapture { [weak self] stopResult in
                 DispatchQueue.main.async {
                     switch stopResult {
@@ -96,7 +96,7 @@ public class FlutterScreenSharePlugin: NSObject, FlutterPlugin {
                 }
             }
         } else {
-            result(FlutterError(code: "UNSUPPORTED_VERSION", message: "Audio capture requires macOS 12.3 or later", details: nil))
+            result(FlutterError(code: "UNSUPPORTED_VERSION", message: "Audio capture requires macOS 13.0 or later", details: nil))
         }
     }
     func setupTexture(descriptor: MTLTextureDescriptor) -> Int64? {

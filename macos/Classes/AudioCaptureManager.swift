@@ -2,16 +2,14 @@ import Foundation
 import ScreenCaptureKit
 import AVFoundation
 
-@available(macOS 12.3, *)
+@available(macOS 13.0, *)
 class AudioCaptureManager: NSObject, SCStreamOutput {
     private var stream: SCStream?
     private var assetWriter: AVAssetWriter?
-    private var micInput: AVAssetWriterInput?
-    private var sysInput: AVAssetWriterInput?
+    private var audioInput: AVAssetWriterInput?
     private var outputURL: URL?
     
-    private let micQueue = DispatchQueue(label: "mic.queue")
-    private let sysQueue = DispatchQueue(label: "sys.queue")
+    private let audioQueue = DispatchQueue(label: "audio.queue")
     
     func startAudioCapture(completion: @escaping (Result<String, Error>) -> Void) {
         // Setup output file path
@@ -37,19 +35,13 @@ class AudioCaptureManager: NSObject, SCStreamOutput {
                 AVEncoderBitRateKey: 128000
             ]
             
-            // Create inputs
-            micInput = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
-            sysInput = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
+            // Create audio input
+            audioInput = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
+            audioInput?.expectsMediaDataInRealTime = true
             
-            micInput?.expectsMediaDataInRealTime = true
-            sysInput?.expectsMediaDataInRealTime = true
-            
-            // Add inputs to writer
-            if let micInput = micInput {
-                assetWriter?.add(micInput)
-            }
-            if let sysInput = sysInput {
-                assetWriter?.add(sysInput)
+            // Add input to writer
+            if let audioInput = audioInput {
+                assetWriter?.add(audioInput)
             }
             
             // Start writing
@@ -60,25 +52,42 @@ class AudioCaptureManager: NSObject, SCStreamOutput {
             
             assetWriter?.startSession(atSourceTime: .zero)
             
-            // Configure ScreenCaptureKit for audio capture
-            let config = SCStreamConfiguration()
-            config.captureMicrophone = true
-            
-            // Create empty filter (no screen content, just audio)
-            let filter = SCContentFilter(desktopIndependentWindow: nil)
-            
-            stream = SCStream(filter: filter, configuration: config, delegate: nil)
-            
-            // Add stream outputs
-            try stream?.addStreamOutput(self, type: .microphone, sampleHandlerQueue: micQueue)
-            try stream?.addStreamOutput(self, type: .audio, sampleHandlerQueue: sysQueue)
-            
-            // Start capture
-            stream?.startCapture { error in
+            // Get available content for audio capture
+            SCShareableContent.getWithCompletionHandler { content, error in
                 if let error = error {
                     completion(.failure(error))
-                } else {
-                    completion(.success(outputURL.path))
+                    return
+                }
+                
+                guard let content = content else {
+                    completion(.failure(AudioCaptureError.noContentAvailable))
+                    return
+                }
+                
+                // Configure ScreenCaptureKit for audio capture
+                let config = SCStreamConfiguration()
+                config.capturesAudio = true
+                config.excludesCurrentProcessAudio = true
+                
+                // Create filter for system audio (no video content)
+                let filter = SCContentFilter(display: content.displays.first!, excludingWindows: [])
+                
+                self.stream = SCStream(filter: filter, configuration: config, delegate: nil)
+                
+                // Add stream output for system audio
+                do {
+                    try self.stream?.addStreamOutput(self, type: .audio, sampleHandlerQueue: self.audioQueue)
+                    
+                    // Start capture
+                    self.stream?.startCapture { error in
+                        if let error = error {
+                            completion(.failure(error))
+                        } else {
+                            completion(.success(outputURL.path))
+                        }
+                    }
+                } catch {
+                    completion(.failure(error))
                 }
             }
             
@@ -111,13 +120,9 @@ class AudioCaptureManager: NSObject, SCStreamOutput {
         guard CMSampleBufferDataIsReady(sampleBuffer) else { return }
         
         switch type {
-        case .microphone:
-            if let micInput = micInput, micInput.isReadyForMoreMediaData {
-                micInput.append(sampleBuffer)
-            }
         case .audio:
-            if let sysInput = sysInput, sysInput.isReadyForMoreMediaData {
-                sysInput.append(sampleBuffer)
+            if let audioInput = audioInput, audioInput.isReadyForMoreMediaData {
+                audioInput.append(sampleBuffer)
             }
         default:
             break
@@ -129,6 +134,7 @@ enum AudioCaptureError: Error {
     case fileSetupFailed
     case writerStartFailed
     case finalizationFailed
+    case noContentAvailable
     
     var localizedDescription: String {
         switch self {
@@ -138,6 +144,8 @@ enum AudioCaptureError: Error {
             return "Failed to start audio writer"
         case .finalizationFailed:
             return "Failed to finalize audio file"
+        case .noContentAvailable:
+            return "No shareable content available for audio capture"
         }
     }
 }
