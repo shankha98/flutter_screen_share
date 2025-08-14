@@ -82,31 +82,44 @@ class FlutterScreenShare {
   ///
   /// Returns a list of [AudioDevice] objects representing all available microphones.
   static Future<List<AudioDevice>> getAudioDevices() async {
-    final devices = await FlutterScreenSharePlatform.instance.getAudioDevices();
-    return devices.map((device) => AudioDevice.fromMap(device)).toList();
+    try {
+      final devices =
+          await FlutterScreenSharePlatform.instance.getAudioDevices();
+      return devices.map((device) => AudioDevice.fromMap(device)).toList();
+    } catch (e) {
+      // Re-throw with more context for debugging
+      throw Exception('Failed to get audio devices: $e');
+    }
   }
 
   /// Starts audio capture from microphone and system audio.
   ///
   /// [microphoneDeviceID] is optional - specify a device ID from [getAudioDevices]
   /// to use a specific microphone. If null, uses the default microphone.
+  /// [enableLogging] enables detailed console logging of audio data (default: false).
   ///
   /// Returns the file path where the audio is being recorded.
-  static Future<String?> startAudioCapture([String? microphoneDeviceID]) {
+  static Future<String?> startAudioCapture([
+    String? microphoneDeviceID,
+    bool enableLogging = false,
+  ]) {
     return FlutterScreenSharePlatform.instance.startAudioCapture(
       microphoneDeviceID,
+      enableLogging,
     );
   }
 
   /// Convenience method to start audio capture with an [AudioDevice].
   ///
   /// [audioDevice] is the microphone device to use. If null, uses the default microphone.
+  /// [enableLogging] enables detailed console logging of audio data (default: false).
   ///
   /// Returns the file path where the audio is being recorded.
   static Future<String?> startAudioCaptureWithDevice([
     AudioDevice? audioDevice,
+    bool enableLogging = false,
   ]) {
-    return startAudioCapture(audioDevice?.id);
+    return startAudioCapture(audioDevice?.id, enableLogging);
   }
 
   /// Stops the audio capture process.

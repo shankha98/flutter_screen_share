@@ -56,10 +56,16 @@ class MethodChannelFlutterScreenShare extends FlutterScreenSharePlatform {
   }
 
   @override
-  Future<String?> startAudioCapture([String? microphoneDeviceID]) async {
+  Future<String?> startAudioCapture([
+    String? microphoneDeviceID,
+    bool enableLogging = false,
+  ]) async {
     final Map<String, dynamic> arguments = {};
     if (microphoneDeviceID != null) {
       arguments['microphoneDeviceID'] = microphoneDeviceID;
+    }
+    if (enableLogging) {
+      arguments['enableLogging'] = enableLogging;
     }
     return await _channel.invokeMethod<String>(
       'startAudioCapture',
@@ -77,6 +83,8 @@ class MethodChannelFlutterScreenShare extends FlutterScreenSharePlatform {
     final List<dynamic> devices = await _channel.invokeMethod(
       'getAudioDevices',
     );
-    return devices.cast<Map<String, dynamic>>();
+    return devices
+        .map((device) => Map<String, dynamic>.from(device as Map))
+        .toList();
   }
 }

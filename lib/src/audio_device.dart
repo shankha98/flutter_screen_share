@@ -17,11 +17,17 @@ class AudioDevice {
 
   /// Creates an [AudioDevice] from a map representation.
   factory AudioDevice.fromMap(Map<String, dynamic> map) {
-    return AudioDevice(
-      id: map['id'] as String,
-      name: map['name'] as String,
-      deviceID: map['deviceID'] as int,
-    );
+    try {
+      return AudioDevice(
+        id: map['id'] as String,
+        name: map['name'] as String,
+        deviceID: map['deviceID'] as int,
+      );
+    } catch (e) {
+      throw FormatException(
+        'Failed to create AudioDevice from map: $map. Error: $e',
+      );
+    }
   }
 
   /// Converts this [AudioDevice] to a map representation.

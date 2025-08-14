@@ -41,7 +41,8 @@ public class FlutterScreenSharePlugin: NSObject, FlutterPlugin, SCStreamDelegate
         case "startAudioCapture":
             let args = call.arguments as? [String: Any]
             let microphoneDeviceID = args?["microphoneDeviceID"] as? String
-            startAudioCapture(microphoneDeviceID: microphoneDeviceID, result)
+            let enableLogging = args?["enableLogging"] as? Bool ?? false
+            startAudioCapture(microphoneDeviceID: microphoneDeviceID, enableLogging: enableLogging, result)
         case "stopAudioCapture":
             stopAudioCapture(result)
         case "getAudioDevices":
@@ -70,9 +71,9 @@ public class FlutterScreenSharePlugin: NSObject, FlutterPlugin, SCStreamDelegate
         captureManager = nil
     }
     
-    private func startAudioCapture(microphoneDeviceID: String? = nil, _ result: @escaping FlutterResult) {
+    private func startAudioCapture(microphoneDeviceID: String? = nil, enableLogging: Bool = false, _ result: @escaping FlutterResult) {
         audioCaptureManager = AudioCaptureManager()
-        audioCaptureManager?.startAudioCapture(microphoneDeviceID: microphoneDeviceID) { captureResult in
+        audioCaptureManager?.startAudioCapture(microphoneDeviceID: microphoneDeviceID, enableLogging: enableLogging) { captureResult in
             DispatchQueue.main.async {
                 switch captureResult {
                 case .success(let filePath):
@@ -117,6 +118,7 @@ public class FlutterScreenSharePlugin: NSObject, FlutterPlugin, SCStreamDelegate
         )
         
         guard status == noErr else {
+            print("AudioDevices: Failed to get audio devices, status: \(status)")
             result(FlutterError(code: "AUDIO_DEVICES_ERROR", message: "Failed to get audio devices", details: nil))
             return
         }
@@ -135,6 +137,7 @@ public class FlutterScreenSharePlugin: NSObject, FlutterPlugin, SCStreamDelegate
         )
         
         guard getDevicesStatus == noErr else {
+            print("AudioDevices: Failed to get audio devices data, status: \(getDevicesStatus)")
             result(FlutterError(code: "AUDIO_DEVICES_ERROR", message: "Failed to get audio devices", details: nil))
             return
         }
@@ -182,7 +185,7 @@ public class FlutterScreenSharePlugin: NSObject, FlutterPlugin, SCStreamDelegate
             )
             
             let name = (nameStatus == noErr && deviceName != nil) ? 
-                String(describing: deviceName!) : "Unknown Device"
+                (deviceName! as String) : "Unknown Device"
             
             // Get device UID (unique identifier)
             var uidAddress = AudioObjectPropertyAddress(
@@ -204,15 +207,19 @@ public class FlutterScreenSharePlugin: NSObject, FlutterPlugin, SCStreamDelegate
             )
             
             let uid = (uidStatus == noErr && deviceUID != nil) ? 
-                String(describing: deviceUID!) : String(deviceID)
+                (deviceUID! as String) : String(deviceID)
             
-            inputDevices.append([
+            let deviceInfo: [String: Any] = [
                 "id": uid,
                 "name": name,
-                "deviceID": deviceID
-            ])
+                "deviceID": Int(deviceID)  // Explicitly convert UInt32 to Int
+            ]
+            
+            print("AudioDevices: Adding device - \(deviceInfo)")
+            inputDevices.append(deviceInfo)
         }
         
+        print("AudioDevices: Returning \(inputDevices.count) devices")
         result(inputDevices)
     }
     func setupTexture(descriptor: MTLTextureDescriptor) -> Int64? {

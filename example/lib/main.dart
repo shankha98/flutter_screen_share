@@ -20,6 +20,7 @@ class _ScreenCaptureState extends State<ScreenCapture> {
   bool _isRecordingAudio = false;
   List<AudioDevice> _audioDevices = [];
   AudioDevice? _selectedAudioDevice;
+  bool _enableAudioLogging = false;
 
   @override
   void initState() {
@@ -65,6 +66,7 @@ class _ScreenCaptureState extends State<ScreenCapture> {
 
       final filePath = await FlutterScreenShare.startAudioCaptureWithDevice(
         _selectedAudioDevice,
+        _enableAudioLogging,
       );
 
       setState(() {
@@ -183,6 +185,20 @@ class _ScreenCaptureState extends State<ScreenCapture> {
                         textAlign: TextAlign.center,
                       ),
                     const SizedBox(height: 10),
+                    // Audio logging toggle
+                    CheckboxListTile(
+                      title: const Text('Enable Audio Logging'),
+                      subtitle: const Text(
+                        'Logs detailed audio data to console',
+                      ),
+                      value: _enableAudioLogging,
+                      enabled: !_isRecordingAudio,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          _enableAudioLogging = value ?? false;
+                        });
+                      },
+                    ),
                     ElevatedButton(
                       onPressed: _isRecordingAudio ? null : _startAudioCapture,
                       child: const Text('Start Audio Capture'),

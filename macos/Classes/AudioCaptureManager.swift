@@ -8,14 +8,17 @@ class AudioCaptureManager: NSObject, SCStreamOutput {
     private var assetWriter: AVAssetWriter?
     private var audioInput: AVAssetWriterInput?
     private var outputURL: URL?
+    private var enableLogging: Bool = false // Control audio logging
     
     private let audioQueue = DispatchQueue(label: "audio.queue")
     
     /// Starts audio capture including system audio and optionally microphone audio
     /// - Parameters:
     ///   - microphoneDeviceID: Optional microphone device ID. Use getAudioDevices() to get available devices. If nil, uses default microphone.
+    ///   - enableLogging: Enable detailed console logging of audio data (default: false)
     ///   - completion: Completion handler with the output file path or error
-    func startAudioCapture(microphoneDeviceID: String? = nil, completion: @escaping (Result<String, Error>) -> Void) {
+    func startAudioCapture(microphoneDeviceID: String? = nil, enableLogging: Bool = false, completion: @escaping (Result<String, Error>) -> Void) {
+        self.enableLogging = enableLogging
         // Setup output file path
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         outputURL = documentsPath.appendingPathComponent("audio_capture_\(Date().timeIntervalSince1970).m4a")
@@ -135,12 +138,110 @@ class AudioCaptureManager: NSObject, SCStreamOutput {
         
         switch type {
         case .audio:
+            // Log audio buffer information if enabled
+            if enableLogging {
+                logAudioSampleBuffer(sampleBuffer)
+            }
+            
             if let audioInput = audioInput, audioInput.isReadyForMoreMediaData {
                 audioInput.append(sampleBuffer)
             }
         default:
             break
         }
+    }
+    
+    // MARK: - Audio Logging
+    
+    private func logAudioSampleBuffer(_ sampleBuffer: CMSampleBuffer) {
+        // Get audio buffer information
+        guard let audioBufferList = CMSampleBufferGetDataBuffer(sampleBuffer) else {
+            print("⚠️ AudioCapture: No data buffer in sample buffer")
+            return
+        }
+        
+        // Get format description
+        guard let formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer) else {
+            print("⚠️ AudioCapture: No format description")
+            return
+        }
+        
+        let audioStreamBasicDescription = CMAudioFormatDescriptionGetStreamBasicDescription(formatDescription)
+        
+        // Log format information
+        if let asbd = audioStreamBasicDescription?.pointee {
+            print("🎵 AudioCapture Format:")
+            print("   Sample Rate: \(asbd.mSampleRate) Hz")
+            print("   Channels: \(asbd.mChannelsPerFrame)")
+            print("   Bits Per Channel: \(asbd.mBitsPerChannel)")
+            print("   Bytes Per Frame: \(asbd.mBytesPerFrame)")
+            print("   Frames Per Packet: \(asbd.mFramesPerPacket)")
+        }
+        
+        // Get sample count and duration
+        let sampleCount = CMSampleBufferGetNumSamples(sampleBuffer)
+        let duration = CMSampleBufferGetDuration(sampleBuffer)
+        let presentationTime = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+        
+        print("🎵 AudioCapture Buffer:")
+        print("   Sample Count: \(sampleCount)")
+        print("   Duration: \(CMTimeGetSeconds(duration)) seconds")
+        print("   Presentation Time: \(CMTimeGetSeconds(presentationTime)) seconds")
+        
+        // Get actual audio data bytes
+        var blockBuffer: CMBlockBuffer?
+        var audioBufferListOut = AudioBufferList()
+        var audioBufferListOutSize = MemoryLayout<AudioBufferList>.size
+        
+        let status = CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer(
+            sampleBuffer,
+            bufferListSizeNeededOut: &audioBufferListOutSize,
+            bufferListOut: &audioBufferListOut,
+            bufferListSize: audioBufferListOutSize,
+            blockBufferAllocator: nil,
+            blockBufferMemoryAllocator: nil,
+            flags: 0,
+            blockBufferOut: &blockBuffer
+        )
+        
+        if status == noErr {
+            let audioBuffer = audioBufferListOut.mBuffers
+            let dataSize = audioBuffer.mDataByteSize
+            
+            print("🎵 AudioCapture Data:")
+            print("   Data Size: \(dataSize) bytes")
+            print("   Number of Channels: \(audioBufferListOut.mNumberBuffers)")
+            
+            // Log first few bytes of audio data for debugging
+            if let audioData = audioBuffer.mData {
+                let dataPointer = audioData.assumingMemoryBound(to: UInt8.self)
+                let bytesToLog = min(Int(dataSize), 16) // Log first 16 bytes
+                
+                var hexString = ""
+                var floatValues = ""
+                
+                for i in 0..<bytesToLog {
+                    hexString += String(format: "%02X ", dataPointer[i])
+                }
+                
+                // If it's float data, also show float values
+                if let asbd = audioStreamBasicDescription?.pointee, asbd.mFormatFlags & kAudioFormatFlagIsFloat != 0 {
+                    let floatPointer = audioData.assumingMemoryBound(to: Float32.self)
+                    let floatsToLog = min(Int(dataSize) / 4, 4) // Log first 4 float values
+                    
+                    for i in 0..<floatsToLog {
+                        floatValues += String(format: "%.6f ", floatPointer[i])
+                    }
+                    print("   First \(floatsToLog) float values: [\(floatValues)]")
+                }
+                
+                print("   First \(bytesToLog) bytes (hex): \(hexString)")
+            }
+        } else {
+            print("⚠️ AudioCapture: Failed to get audio buffer list, status: \(status)")
+        }
+        
+        print("---")
     }
 }
 
