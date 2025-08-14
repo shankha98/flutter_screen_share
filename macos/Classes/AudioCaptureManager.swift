@@ -2,7 +2,7 @@ import Foundation
 import ScreenCaptureKit
 import AVFoundation
 
-@available(macOS 13.0, *)
+@available(macOS 15.0, *)
 class AudioCaptureManager: NSObject, SCStreamOutput {
     private var stream: SCStream?
     private var assetWriter: AVAssetWriter?

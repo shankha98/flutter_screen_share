@@ -34,7 +34,7 @@ A new Flutter plugin project.
     'CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES' => 'YES'
   }
 
-  s.platform = :osx, '13.0'
+  s.platform = :osx, '15.0'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
   s.swift_version = '5.0'
   s.frameworks = 'ScreenCaptureKit', 'AVFoundation'

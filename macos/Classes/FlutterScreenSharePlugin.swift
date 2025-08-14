@@ -5,7 +5,7 @@ import Metal
 import SDWebImage
 import SDWebImageWebPCoder
 
-@available(macOS 13.0, *)
+@available(macOS 15.0, *)
 public class FlutterScreenSharePlugin: NSObject, FlutterPlugin, SCStreamDelegate {
     internal var streamOutput: FlutterEventSink?
     internal var textureRegistry: FlutterTextureRegistry?

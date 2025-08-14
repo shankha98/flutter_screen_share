@@ -5,7 +5,7 @@ import Metal
 import SDWebImage
 import SDWebImageWebPCoder
 
-@available(macOS 13.0, *)
+@available(macOS 15.0, *)
 class ScreenCaptureManager: NSObject, SCStreamDelegate, SCStreamOutput {
     private weak var plugin: FlutterScreenSharePlugin?
     private var frameEncoder: FrameEncoder?
