@@ -15,9 +15,10 @@ class AudioCaptureManager: NSObject, SCStreamOutput {
     /// Starts audio capture including system audio and optionally microphone audio
     /// - Parameters:
     ///   - microphoneDeviceID: Optional microphone device ID. Use getAudioDevices() to get available devices. If nil, uses default microphone.
+    ///   - captureMicrophone: Whether to capture microphone audio (default: true)
     ///   - enableLogging: Enable detailed console logging of audio data (default: false)
     ///   - completion: Completion handler with the output file path or error
-    func startAudioCapture(microphoneDeviceID: String? = nil, enableLogging: Bool = false, completion: @escaping (Result<String, Error>) -> Void) {
+    func startAudioCapture(microphoneDeviceID: String? = nil, captureMicrophone: Bool = true, enableLogging: Bool = false, completion: @escaping (Result<String, Error>) -> Void) {
         self.enableLogging = enableLogging
         // Setup output file path
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
@@ -75,14 +76,14 @@ class AudioCaptureManager: NSObject, SCStreamOutput {
                 let config = SCStreamConfiguration()
                 config.capturesAudio = true
                 config.excludesCurrentProcessAudio = true
-                config.captureMicrophone = true
+                config.captureMicrophone = captureMicrophone
                 
                 // Configure audio settings
                 config.sampleRate = 44100  // Match our audio settings
                 config.channelCount = 2    // Match our audio settings (stereo)
                 
-                // Set microphone device if specified
-                if let microphoneDeviceID = microphoneDeviceID {
+                // Set microphone device if specified and microphone capture is enabled
+                if captureMicrophone, let microphoneDeviceID = microphoneDeviceID {
                     config.microphoneCaptureDeviceID = microphoneDeviceID
                 }
 

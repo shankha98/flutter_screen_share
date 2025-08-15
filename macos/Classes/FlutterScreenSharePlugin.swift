@@ -41,8 +41,9 @@ public class FlutterScreenSharePlugin: NSObject, FlutterPlugin, SCStreamDelegate
         case "startAudioCapture":
             let args = call.arguments as? [String: Any]
             let microphoneDeviceID = args?["microphoneDeviceID"] as? String
+            let captureMicrophone = args?["captureMicrophone"] as? Bool ?? true
             let enableLogging = args?["enableLogging"] as? Bool ?? false
-            startAudioCapture(microphoneDeviceID: microphoneDeviceID, enableLogging: enableLogging, result)
+            startAudioCapture(microphoneDeviceID: microphoneDeviceID, captureMicrophone: captureMicrophone, enableLogging: enableLogging, result)
         case "stopAudioCapture":
             stopAudioCapture(result)
         case "getAudioDevices":
@@ -71,9 +72,9 @@ public class FlutterScreenSharePlugin: NSObject, FlutterPlugin, SCStreamDelegate
         captureManager = nil
     }
     
-    private func startAudioCapture(microphoneDeviceID: String? = nil, enableLogging: Bool = false, _ result: @escaping FlutterResult) {
+    private func startAudioCapture(microphoneDeviceID: String? = nil, captureMicrophone: Bool = true, enableLogging: Bool = false, _ result: @escaping FlutterResult) {
         audioCaptureManager = AudioCaptureManager()
-        audioCaptureManager?.startAudioCapture(microphoneDeviceID: microphoneDeviceID, enableLogging: enableLogging) { captureResult in
+        audioCaptureManager?.startAudioCapture(microphoneDeviceID: microphoneDeviceID, captureMicrophone: captureMicrophone, enableLogging: enableLogging) { captureResult in
             DispatchQueue.main.async {
                 switch captureResult {
                 case .success(let filePath):
